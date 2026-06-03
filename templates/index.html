@@ -8,13 +8,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <style>
-        /* Specific overrides for SPA sections */
+        /* 固定聊天页布局 + 滚动条 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .chat-layout {
             display: grid;
             grid-template-columns: 1fr 280px;
             gap: 1.5rem;
             height: calc(100vh - 140px);
+            overflow: hidden;
         }
+        .chat-layout > div:first-child { overflow: hidden; display: flex; flex-direction: column; }
+        .chat-layout > div:last-child { overflow-y: auto; min-height: 0; }
 
         @media (max-width: 768px) {
             .chat-layout {
@@ -264,7 +271,7 @@
                 <!-- Right: Sidebar -->
                 <div style="display: flex; flex-direction: column; gap: 1rem; height: 100%;">
                     <!-- User List -->
-                    <div class="user-list-panel" style="flex: 0 0 auto; max-height: 200px;">
+                    <div class="user-list-panel" style="flex: 0 0 auto; max-height: 200px; overflow-y: auto;">
                         <h4 style="margin-top: 0; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                             <span class="iconify" data-icon="lucide:users" style="color: var(--color-primary);"></span>
                             在线成员
@@ -275,7 +282,7 @@
                     </div>
 
                     <!-- Tools / Admin -->
-                    <div class="user-list-panel" style="flex: 0 0 auto;">
+                    <div class="user-list-panel" style="flex: 0 0 auto; overflow-y: auto;">
                          <h4 style="margin-top: 0; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
                             <span class="iconify" data-icon="lucide:wrench" style="color: var(--color-primary);"></span>
                             工具箱
@@ -300,7 +307,7 @@
                     </div>
 
                     <!-- Chat (No AI) -->
-                     <div class="user-list-panel" style="flex: 1; display: flex; flex-direction: column; min-height: 200px;">
+                     <div class="user-list-panel" style="flex: 1; display: flex; flex-direction: column; min-height: 200px; overflow-y: auto;">
                         <h4 style="margin-top: 0; margin-bottom: 0.5rem;">房间群聊</h4>
                         <div id="chat-box-chat" style="flex: 1; overflow-y: auto; background: #f9fafb; border-radius: var(--radius-sm); padding: 0.5rem; font-size: 0.9rem; margin-bottom: 0.5rem; min-height: 100px;"></div>
                         <div style="display: flex; gap: 0.5rem;">

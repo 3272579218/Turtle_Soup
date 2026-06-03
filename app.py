@@ -73,8 +73,8 @@ CUSTOM_STORY_RESTORE_GUIDE = (
     "- ‘不重要’的信息要单独整理和汇报。\n"
     "- 整理时要简明扼要，避免剧透和过度推理。\n"
     "其余时间请严格按照海龟汤规则进行推理问答。\n"
-    "3. 回答时需判断问题的重要性：如果问题对解开谜底很关键，回答'是（关键提问）'或'否（关键提问）'；"
-    "如果是一般性问题，正常回答'是'、'不是'或'不重要'。"
+    "3. 回答时需判断问题的重要性：只有当问题与汤底或补充说明高度相关时才标记为'关键提问'，否则正常回答。"
+    "4. 对于一般性问题，回答'是'、'不是'或'不重要'后可补充少量细节（不超过一句话）。"
 )
 
 # 故事广场相关目录
@@ -427,8 +427,9 @@ def send_message():
                     preset = (f"你现在是海龟汤推理游戏的主持人。当前题目如下：\n\n"
                               f"汤面：{story.get('surface', '')}\n\n"
                               "游戏规则：出题者先给出不完整的'汤面'（题目），让猜题者提出各种可能性的问题，"
-                              "而出题者回答时需先判断问题的重要性：如果问题对解开谜底很关键，应该回答'是（关键提问）'或'否（关键提问）'；"
-                              "如果只是一般性问题且不关键，回答'是'、'不是'或'不重要'。"
+                              "而出题者回答时需先判断问题的重要性：只有当问题与汤底或补充说明高度相关时才标记为'关键提问'，"
+                              "回答'是（关键提问）'或'否（关键提问）'；一般性问题回答'是'、'不是'或'不重要'，"
+                              "并且允许在答案后补充少量细节信息（不超过一句话），帮助玩家理解。"
                               "猜题者在有限的线索中推理出事件的始末，拼出故事的全貌，凑出一个'汤底'（答案）。"
                               "你只需根据规则回答问题，不要直接给出答案。"
                               "同时会给出胜利条件，由你来决定是否过关。\n\n"
@@ -576,9 +577,13 @@ def upload_story():
                 return jsonify({'error': f'文件解析失败: {str(e)}'}), 400
         # 默认切换到最新上传的题目
         room['current_story'] = len(room['stories']) - 1 if room['stories'] else None
-        # 初始化揭晓标志
         if room['current_story'] is not None:
             room['reveal_answer_flag'] = False
+            room['messages'] = [{'role': 'system', 'content': '房主已上传新题目', 'nickname': '系统'}]
+            room['chat_messages'] = []
+            room['ai_context'] = []
+            room['question_bank'] = []
+            room['passed'] = False
     return jsonify({'success': True, 'count': len(room['stories'])})
 
 @app.route('/api/set_story', methods=['POST'])
@@ -600,9 +605,9 @@ def set_story():
         if not (0 <= idx < len(room['stories'])):
             return jsonify({'error': '题目索引超出范围'}), 400
         room['current_story'] = idx
-        # 插入系统消息
-        room['messages'].append({'role': 'system', 'content': '房主已切换其他题目', 'nickname': '系统'})
-        # 清空 AI 上下文和问题库（新故事重新开始）
+        # 清空消息记录、上下文和问题库（新故事重新开始）
+        room['messages'] = [{'role': 'system', 'content': '房主已切换其他题目，历史已清空', 'nickname': '系统'}]
+        room['chat_messages'] = []
         room['ai_context'] = []
         room['question_bank'] = []
         room['passed'] = False
@@ -1091,6 +1096,11 @@ def load_story_from_plaza():
             room['stories'].append(plaza_story['data'])
             room['current_story'] = len(room['stories']) - 1
             room['reveal_answer_flag'] = False
+            room['messages'] = [{'role': 'system', 'content': '房主已加载新故事', 'nickname': '系统'}]
+            room['chat_messages'] = []
+            room['ai_context'] = []
+            room['question_bank'] = []
+            room['passed'] = False
             return jsonify({'success': True, 'count': len(room['stories'])})
         except Exception as e:
             return jsonify({'error': f'加载失败: {str(e)}'}), 500
@@ -1146,6 +1156,11 @@ def ai_generate_story():
         room['stories'].append(story)
         room['current_story'] = len(room['stories']) - 1
         room['reveal_answer_flag'] = False
+        room['messages'] = [{'role': 'system', 'content': '房主已用AI生成新故事', 'nickname': '系统'}]
+        room['chat_messages'] = []
+        room['ai_context'] = []
+        room['question_bank'] = []
+        room['passed'] = False
         # 初始化微调上下文
         room['ai_gen_context'] = [
             {'role': 'system', 'content': build_refinement_prompt(story)},

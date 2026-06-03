@@ -164,7 +164,7 @@ deleteBtn.onclick = async function() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({code: roomCode, nickname})
         });
-        alert('房间已删除');
+        showToast('房间已删除');
         leaveRoom();
     } catch (e) {}
 };
@@ -227,7 +227,7 @@ async function loadStoryFromPlaza(filename) {
         });
         const data = await response.json();
         if (data.success) {
-            alert('故事加载成功');
+            showToast('故事加载成功', 'success');
             fetchCurrentStory();
             fetchStoryList && fetchStoryList();
         } else {
@@ -254,7 +254,7 @@ async function getPlazaStories() {
 async function showPlazaStorySelector() {
     const stories = await getPlazaStories();
     if (stories.length === 0) {
-        alert('故事广场暂无故事');
+        showToast('故事广场暂无故事');
         return;
     }
     // 构建弹窗
@@ -331,7 +331,7 @@ async function showPlazaStorySelector() {
                 });
                 const data = await response.json();
                 if (data.success) {
-                    alert('故事加载成功');
+                    showToast('故事加载成功', 'success');
                     closePlazaModal();
                     fetchCurrentStory();
                     fetchStoryList && fetchStoryList();
@@ -430,11 +430,16 @@ async function setStoryIndex(idx) {
         });
         const data = await res.json();
         if (data.success) {
+            // 清空聊天框和问题库显示
+            document.getElementById('chat-box').innerHTML = '';
+            document.getElementById('chat-box').innerHTML = '<div style="text-align:center;color:var(--color-text-secondary);margin-top:2rem;"><span class="iconify" data-icon="lucide:message-square" style="font-size:2rem;opacity:0.5;"></span><p>已切换故事，重新开始提问...</p></div>';
+            var qbList = document.getElementById('question-bank-list');
+            if (qbList) qbList.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:20px;">暂无问题</div>';
             await fetchCurrentStory();
             await pollMessages();
             saveSession();
         } else {
-            alert(data.error || '切换失败');
+            showToast(data.error || '切换失败', 'error');
         }
     } catch (e) {
         alert('切换失败');
@@ -495,8 +500,7 @@ function loadSession() {
 }
 
 // 页面加载时自动恢复
-window.addEventListener('DOMContentLoaded', loadSession);
-
+// loadSession 在 DOMContentLoaded 末尾调用（确保 enterChat 已定义）
 // 默认显示首页
 showPage('home');
 
@@ -580,7 +584,7 @@ function updateApiProfile(id, data) {
         saveApiProfiles(profiles);
     }
 }
-function deleteApiProfile(id) {
+window.deleteApiProfile = function(id) {
     let profiles = getApiProfiles();
     profiles = profiles.filter(p => p.id !== id);
     saveApiProfiles(profiles);
@@ -1285,9 +1289,10 @@ async function doAiGen(randomMode) {
     btn.disabled = false;
 }
 window.useGeneratedStory = function() {
-    fetchCurrentStory();
     closeAIGenModal();
     showToast('故事已加载到房间！', 'success');
+    // 延迟刷新房间显示，确保弹窗先关闭
+    setTimeout(function(){ fetchCurrentStory(); }, 100);
 };
 
 // ==============================
@@ -1371,7 +1376,7 @@ function applyRefinedStory() {
 // 在 setupUploadBtn 中已经通过 innerHTML 覆盖了 story-ops，
 // 所以我们需要在 setupUploadBtn 执行后额外添加按钮。
 // 改为在 enterChat 中 setupUploadBtn 后追加
-const origEnterChat = enterChat;
+// origEnterChat removed - original enterChat was deleted
 enterChat = function(roomInfo) {
     showPage('chat');
     document.getElementById('invite-code').textContent = roomCode;
@@ -1421,5 +1426,7 @@ enterChat = function(roomInfo) {
     startHeartbeat();
     window._popupPassedFlag = false;
 };
+
+loadSession();
 
 });
