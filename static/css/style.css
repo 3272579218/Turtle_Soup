@@ -323,3 +323,144 @@ tr:hover {
     overflow-y: auto;
     max-height: 100%;
 }
+
+/* ==========================================================================
+   凯喵推子 / 全AI修改 — 以下样式由 Claude Code 生成
+   功能: 弹窗 / Spinner / 问题库 / API配置卡片 / AI生成结果 / 微调界面
+   ========================================================================== */
+
+/* ========== Modal / Overlay ========== */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.18);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: #fff;
+    padding: 28px 24px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px 0 rgba(31,38,135,0.15);
+    max-width: 520px;
+    width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* ========== Spinner ========== */
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #059669;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* ========== Question Bank ========== */
+.question-item {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border: 1px solid #e5e7eb;
+    text-align: left;
+}
+
+.question-item:hover {
+    border-color: #059669;
+    box-shadow: 0 1px 4px rgba(5,150,105,0.1);
+}
+
+.question-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.answer-text {
+    font-size: 13px;
+    color: #059669;
+    margin-top: 4px;
+}
+
+/* ========== Cache Hint ========== */
+.cache-hint {
+    text-align: center;
+    font-size: 12px;
+    color: #f59e0b;
+    margin: 4px 0;
+    padding: 4px 8px;
+    background: #fffbeb;
+    border-radius: 6px;
+}
+
+/* ========== API Config Cards ========== */
+.api-card {
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.api-card-primary {
+    border-color: #059669;
+    border-left: 3px solid #059669;
+}
+
+/* ========== Story Gen Result ========== */
+.gen-surface {
+    background: #f0fdf4;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.gen-victory {
+    background: #fef3c7;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+/* ========== Refinement Chat ========== */
+.refine-messages {
+    max-height: 300px;
+    overflow-y: auto;
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.refine-msg-user {
+    text-align: right;
+    margin: 4px 0;
+    color: #3b82f6;
+}
+
+.refine-msg-ai {
+    margin: 4px 0;
+    background: white;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+/* ========== Scrollbar styling ========== */
+.modal-content::-webkit-scrollbar,
+.refine-messages::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-content::-webkit-scrollbar-thumb,
+.refine-messages::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}

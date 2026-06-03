@@ -1,10 +1,10 @@
 {
   "preset": "",
   "admin": {
-    "username": "",
-    "password": ""
+    "username": "XLPJ",
+    "password": "325325799"
   },
-  "story_counter": 59,
+  "story_counter": 62,
   "options": {
     "models": [
       "gpt-5-chat"

@@ -37,6 +37,16 @@
             font-size: 0.9rem;
             line-height: 1.4;
         }
+        .admin-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.3); z-index: 2000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .admin-dialog {
+            background: #fff; border-radius: 16px; padding: 28px 24px;
+            max-width: 600px; width: 90vw; max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        }
     </style>
 </head>
 <body>
@@ -107,9 +117,28 @@
             </div>
         </div>
 
+        <!-- 待审核故事 -->
         <div class="card admin-section">
-            <h3><span class="iconify" data-icon="lucide:library"></span> 故事管理</h3>
-            
+            <h3><span class="iconify" data-icon="lucide:clock"></span> 待审核故事</h3>
+            <div style="max-height: 300px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: var(--radius-sm);">
+                <table id="pending-stories-table" style="margin: 0;">
+                    <thead>
+                        <tr>
+                            <th style="position: sticky; top: 0; z-index: 10;">名称</th>
+                            <th style="position: sticky; top: 0; z-index: 10;">ID</th>
+                            <th style="position: sticky; top: 0; z-index: 10;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td colspan="3" style="text-align:center;padding:2rem;color:#9ca3af;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card admin-section">
+            <h3><span class="iconify" data-icon="lucide:library"></span> 已发布故事</h3>
+
             <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
                 <div style="position: relative; flex: 1;">
                     <span class="iconify" data-icon="lucide:search" style="position: absolute; left: 12px; top: 12px; color: #9ca3af;"></span>
@@ -126,7 +155,6 @@
                         <tr>
                             <th style="position: sticky; top: 0; z-index: 10;">故事名称</th>
                             <th style="position: sticky; top: 0; z-index: 10;">ID</th>
-                            <th style="position: sticky; top: 0; z-index: 10;">文件名</th>
                             <th style="position: sticky; top: 0; z-index: 10;">操作</th>
                         </tr>
                     </thead>
@@ -223,9 +251,9 @@
                 tr.innerHTML = `
                     <td>${story.name || '无名称'}</td>
                     <td><span style="font-family:monospace;font-size:0.9em;color:#6b7280;">${story.id || ''}</span></td>
-                    <td style="font-family:monospace;font-size:0.8em;color:#6b7280;">${story.filename || ''}</td>
-                    <td>
-                        <button class="btn btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="deleteReleased('${story.filename}')">
+                    <td style="display:flex;gap:6px;">
+                        <button class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.8rem;" onclick="viewStory('${story.filename}')">👁 查看</button>
+                        <button class="btn btn-danger" style="padding:0.3rem 0.6rem;font-size:0.8rem;" onclick="deleteReleased('${story.filename}')">
                             <span class="iconify" data-icon="lucide:trash-2"></span> 删除
                         </button>
                     </td>
@@ -319,8 +347,87 @@
             } catch (e) { alert('网络错误'); }
         }
 
+        // --- Pending Stories ---
+        async function loadPendingStories() {
+            try {
+                const resp = await fetch('/api/get_pending_stories');
+                const data = await resp.json();
+                const tbody = document.querySelector('#pending-stories-table tbody');
+                const list = data.stories || [];
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:2rem;color:#9ca3af;">暂无待审核故事</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = list.map(s => `
+                    <tr>
+                        <td>${s.name || '无名称'}</td>
+                        <td><span style="font-family:monospace;font-size:0.9em;color:#6b7280;">${s.id || ''}</span></td>
+                        <td style="display:flex;gap:6px;">
+                            <button class="btn" style="padding:0.3rem 0.6rem;font-size:0.8rem;" onclick="viewStory('${s.filename}')">👁 查看</button>
+                            <button class="btn" style="padding:0.3rem 0.6rem;font-size:0.8rem;background:#059669;" onclick="approveStory('${s.filename}')">✅ 通过</button>
+                            <button class="btn btn-danger" style="padding:0.3rem 0.6rem;font-size:0.8rem;" onclick="rejectStory('${s.filename}')">❌ 拒绝</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        function approveStory(filename) {
+            if (!confirm('确定通过此故事？')) return;
+            const fd = new FormData(); fd.append('filename', filename);
+            fetch('/api/approve_story', {method:'POST', body:fd})
+            .then(r => r.json()).then(d => { if(d.success) loadPendingStories(); else alert(d.error); })
+            .catch(() => alert('网络错误'));
+        }
+
+        function rejectStory(filename) {
+            if (!confirm('确定拒绝此故事？')) return;
+            const fd = new FormData(); fd.append('filename', filename);
+            fetch('/api/reject_story', {method:'POST', body:fd})
+            .then(r => r.json()).then(d => { if(d.success) loadPendingStories(); else alert(d.error); })
+            .catch(() => alert('网络错误'));
+        }
+
+        // --- View Story Detail ---
+        function viewStory(filename) {
+            const fd = new FormData(); fd.append('filename', filename);
+            fetch('/api/admin_view_story', {method:'POST', body:fd})
+            .then(r => r.json()).then(d => {
+                if (!d.success) { alert(d.error || '加载失败'); return; }
+                const s = d.story;
+                // Show in a modal-like overlay
+                const overlay = document.createElement('div');
+                overlay.className = 'admin-overlay';
+                overlay.innerHTML = `
+                    <div class="admin-dialog">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <h3 style="margin:0;">${s.name || '故事详情'}</h3>
+                            <button onclick="this.parentElement.parentElement.parentElement.remove()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">×</button>
+                        </div>
+                        <div style="background:#f0fdf4;border-radius:8px;padding:12px;margin-bottom:8px;">
+                            <div style="font-weight:600;color:#059669;">📖 汤面</div>
+                            <div style="white-space:pre-wrap;">${s.surface || ''}</div>
+                        </div>
+                        <div style="background:#fef2f2;border-radius:8px;padding:12px;margin-bottom:8px;">
+                            <div style="font-weight:600;color:#dc2626;">🔑 汤底</div>
+                            <div style="white-space:pre-wrap;">${s.answer || ''}</div>
+                        </div>
+                        <div style="background:#fef3c7;border-radius:8px;padding:12px;margin-bottom:8px;">
+                            <div style="font-weight:600;color:#d97706;">🏆 胜利条件</div>
+                            <div>${s.victory_condition || '未设置'}</div>
+                        </div>
+                        <div style="background:#f1f5f9;border-radius:8px;padding:12px;">
+                            <div style="font-weight:600;color:#64748b;">ℹ️ 补充说明</div>
+                            <div>${s.additional || '无'}</div>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+            }).catch(() => alert('网络错误'));
+        }
+
         // Init
         loadReleasedStories();
+        loadPendingStories();
         loadOptions();
         loadAnnouncements();
     </script>

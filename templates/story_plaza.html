@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>故事广场 - 海龟汤</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <style>
@@ -40,6 +41,7 @@
         }
         .tab-content.active {
             display: block;
+            width: 100%;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
@@ -101,6 +103,12 @@
         .dropdown-item:hover {
             background-color: #f9fafb;
         }
+        /* 【凯喵推子】通用确认弹窗 */
+        .confirm-overlay { position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);z-index:2000;display:flex;align-items:center;justify-content:center; }
+        .confirm-dialog { background:#fff;border-radius:16px;padding:28px 24px;max-width:480px;width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.15); }
+        .confirm-dialog h3 { margin:0 0 12px 0; }
+        .confirm-dialog .btn-row { display:flex;gap:8px;margin-top:16px; }
+        .confirm-dialog .btn-row .btn { flex:1;justify-content:center; }
     </style>
 </head>
 <body>
@@ -121,6 +129,7 @@
             <button class="tab-btn active" onclick="switchTab('browse')">浏览故事</button>
             <button class="tab-btn" onclick="switchTab('create')">发布故事</button>
             <button class="tab-btn" onclick="switchTab('manage')">管理/编辑</button>
+            <button class="tab-btn" onclick="switchTab('ai-gen')"><span class="iconify" data-icon="lucide:wand-2"></span> AI生成</button>
         </div>
 
         <!-- Browse Tab -->
@@ -131,6 +140,10 @@
                     <input type="text" id="browse-search" placeholder="搜索故事..." style="padding-left: 36px;" oninput="filterStories(this.value)">
                 </div>
             </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <span id="story-count" style="font-size:14px;color:var(--color-text-secondary);"></span>
+                <button class="btn btn-danger" id="batch-delete-btn" style="padding:4px 12px;font-size:12px;display:none;" onclick="batchDeleteStories()">🗑 批量删除</button>
+            </div>
             <div id="stories-grid" class="story-grid">
                 <!-- Stories will be loaded here -->
                 <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #9ca3af;">
@@ -140,62 +153,64 @@
             </div>
         </div>
 
-        <!-- Create Tab -->
+        <!-- Create Tab — 上下布局 -->
         <div id="create" class="tab-content">
-            <div class="card">
-                <h3><span class="iconify" data-icon="lucide:upload-cloud"></span> 上传 JSON 文件</h3>
-                <form id="upload-form">
-                    <div class="form-group">
-                        <label>故事名称</label>
-                        <input type="text" id="story-name" maxlength="32" required placeholder="给你的故事起个名字">
-                    </div>
-                    <div class="form-group">
-                        <label>设置管理密码</label>
-                        <input type="password" id="story-password" required placeholder="用于日后修改">
-                    </div>
-                    <div class="form-group">
-                        <label>选择文件 (.json)</label>
-                        <input type="file" id="story-file" accept=".json" required style="padding: 0.5rem 0;">
-                    </div>
-                    <button class="btn" type="submit">
-                        <span class="iconify" data-icon="lucide:upload"></span> 上传发布
-                    </button>
-                    <div id="upload-result" style="margin-top: 1rem;"></div>
-                </form>
-            </div>
+            <div style="width:100%;">
+                <div class="card">
+                    <h3><span class="iconify" data-icon="lucide:upload-cloud"></span> 上传 JSON 文件</h3>
+                    <form id="upload-form">
+                        <div class="form-group">
+                            <label>故事名称</label>
+                            <input type="text" id="story-name" maxlength="32" required placeholder="给你的故事起个名字">
+                        </div>
+                        <div class="form-group">
+                            <label>管理密码 <span style="font-weight:normal;color:var(--color-text-secondary);">（可选）</span></label>
+                            <input type="password" id="story-password" placeholder="用于修改（可选）">
+                        </div>
+                        <div class="form-group">
+                            <label>选择文件 (.json)</label>
+                            <input type="file" id="story-file" accept=".json" required style="padding: 0.5rem 0;">
+                        </div>
+                        <button class="btn" type="submit">
+                            <span class="iconify" data-icon="lucide:upload"></span> 上传发布
+                        </button>
+                        <div id="upload-result" style="margin-top: 1rem;"></div>
+                    </form>
+                </div>
 
-            <div class="card" style="margin-top: 2rem;">
-                <h3><span class="iconify" data-icon="lucide:edit-3"></span> 在线创作</h3>
-                <form id="online-form">
-                    <div class="form-group">
-                        <label>故事名称</label>
-                        <input type="text" id="online-name" maxlength="32" required>
-                    </div>
-                    <div class="form-group">
-                        <label>设置管理密码</label>
-                        <input type="password" id="online-password" required>
-                    </div>
-                    <div class="form-group">
-                        <label>汤面 (玩家看到的谜题)</label>
-                        <textarea id="online-surface" rows="3" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>汤底 (真相)</label>
-                        <textarea id="online-answer" rows="3" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>获胜条件</label>
-                        <input type="text" id="online-victory" placeholder="例如：猜出凶手是谁" required>
-                    </div>
-                    <div class="form-group">
-                        <label>给 AI 的补充说明 (可选)</label>
-                        <input type="text" id="online-additional">
-                    </div>
-                    <button class="btn" type="submit">
-                        <span class="iconify" data-icon="lucide:send"></span> 发布故事
-                    </button>
-                    <div id="online-result" style="margin-top: 1rem;"></div>
-                </form>
+                <div class="card" style="margin-top:1.5rem;">
+                    <h3><span class="iconify" data-icon="lucide:edit-3"></span> 在线创作</h3>
+                    <form id="online-form">
+                        <div class="form-group">
+                            <label>故事名称</label>
+                            <input type="text" id="online-name" maxlength="32" required>
+                        </div>
+                        <div class="form-group">
+                            <label>管理密码 <span style="font-weight:normal;color:var(--color-text-secondary);">（可选）</span></label>
+                            <input type="password" id="online-password" placeholder="用于修改（可选）">
+                        </div>
+                        <div class="form-group">
+                            <label>汤面 (玩家看到的谜题)</label>
+                            <textarea id="online-surface" rows="3" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>汤底 (真相)</label>
+                            <textarea id="online-answer" rows="3" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>获胜条件</label>
+                            <input type="text" id="online-victory" placeholder="例如：猜出凶手是谁" required>
+                        </div>
+                        <div class="form-group">
+                            <label>给 AI 的补充说明 (可选)</label>
+                            <input type="text" id="online-additional">
+                        </div>
+                        <button class="btn" type="submit">
+                            <span class="iconify" data-icon="lucide:send"></span> 发布故事
+                        </button>
+                        <div id="online-result" style="margin-top: 1rem;"></div>
+                    </form>
+                </div>
             </div>
         </div>
 
@@ -237,8 +252,111 @@
             </div>
         </div>
         
-        <div style="text-align: center; padding: 2rem 0; color: #9ca3af; font-size: 0.9rem;">
-            <a href="https://github.com/mumuhaha487/Turtle_Soup" target="_blank" style="color: inherit; text-decoration: none;">Turtle_Soup</a> 由 mumuhaha 构建 | <a href="https://beian.miit.gov.cn/" target="_blank" style="color: inherit; text-decoration: none;">赣ICP备2024038464号</a>
+        <!-- ================================================================ -->
+        <!-- 【凯喵推子 / 全AI修改】AI 生成故事 — 独立标签页（重构版）          -->
+        <!-- 布局: 上部生成区 + 下部记录列表 → 点击进入详情子界面               -->
+        <!-- ================================================================ -->
+        <div id="ai-gen" class="tab-content">
+            <!-- ====== 主界面 ====== -->
+            <div id="ai-gen-main">
+                <!-- 生成区卡片 -->
+                <div class="card" style="margin-bottom:1.5rem;">
+                    <h3 style="margin-top:0;"><span class="iconify" data-icon="lucide:wand-2"></span> AI 生成海龟汤</h3>
+                    <p style="font-size:0.9rem;color:var(--color-text-secondary);">输入详细要求，AI 将为你创作一个海龟汤故事。生成后可进入详情页对话调整。</p>
+                    <form id="plaza-ai-form">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                            <div>
+                                <div class="form-group">
+                                    <label>故事名称（可选）</label>
+                                    <input type="text" id="plaza-ai-name" placeholder="如：深夜的图书馆">
+                                </div>
+                                <div class="form-group">
+                                    <label>管理密码</label>
+                                    <input type="password" id="plaza-ai-password" required placeholder="用于发布和管理">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group">
+                                    <label>详细要求 <span style="font-weight:normal;color:var(--color-text-secondary);">（越详细效果越好）</span></label>
+                                    <textarea id="plaza-ai-prompt" rows="4" style="width:100%;resize:vertical;max-width:100%;" placeholder="例如：写一个校园悬疑故事，发生在深夜的图书馆，管理员发现……"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                            <button class="btn" type="submit" style="flex:1;justify-content:center;">
+                                <span class="iconify" data-icon="lucide:sparkles"></span> 开始生成
+                            </button>
+                            <button class="btn btn-secondary" type="button" onclick="showPresetEditor()" style="flex:0 0 auto;padding:0.75rem 1rem;">
+                                <span class="iconify" data-icon="lucide:sliders"></span> 编辑提示词
+                            </button>
+                        </div>
+                        <div id="plaza-ai-loading" style="display:none;text-align:center;margin-top:1rem;color:var(--color-text-secondary);">
+                            <span class="spinner" style="display:inline-block;width:24px;height:24px;border:3px solid #e5e7eb;border-top:3px solid var(--color-primary);border-radius:50%;animation:spin 1s linear infinite;"></span>
+                            <div style="margin-top:8px;">AI正在创作中...</div>
+                        </div>
+                        <div id="plaza-ai-error" style="color:var(--color-danger);margin-top:1rem;display:none;"></div>
+                    </form>
+                </div>
+
+                <!-- 生成记录卡片流 -->
+                <div id="ai-gen-cards" style="display:flex;gap:1rem;overflow-x:auto;padding-bottom:0.5rem;margin-bottom:1.5rem;">
+                    <!-- 由 JS 动态填充 -->
+                </div>
+
+                <!-- 历史记录 -->
+                <div class="card">
+                    <h4 style="margin:0 0 12px 0;">📋 历史记录 <span style="font-weight:normal;font-size:13px;color:var(--color-text-secondary);">点击可进入详情</span></h4>
+                    <div id="plaza-ai-history" style="max-height:300px;overflow-y:auto;">
+                        <div style="color:#94a3b8;text-align:center;padding:20px;">暂无记录</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== 详情子界面（覆盖主界面） ====== -->
+            <div id="ai-gen-detail" style="display:none;">
+                <!-- 顶栏 -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+                    <button class="btn btn-secondary" onclick="closeAiGenDetail()" style="padding:0.5rem 1rem;">
+                        <span class="iconify" data-icon="lucide:arrow-left"></span> 返回
+                    </button>
+                    <h3 id="ai-gen-detail-name" style="margin:0;flex:1;text-align:center;">故事详情</h3>
+                    <div style="display:flex;gap:0.5rem;">
+                        <button class="btn" onclick="publishGenStory()" style="padding:0.5rem 1rem;font-size:0.85rem;">📤 发布</button>
+                        <button class="btn btn-secondary" onclick="fillOnlineForm()" style="padding:0.5rem 1rem;font-size:0.85rem;">📝 编辑</button>
+                    </div>
+                </div>
+                <!-- 主体：左故事信息 / 右AI对话 -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;height:calc(100vh - 280px);min-height:400px;">
+                    <!-- 左侧：故事信息 -->
+                    <div class="card" style="margin:0;overflow-y:auto;display:flex;flex-direction:column;">
+                        <div id="ai-gen-detail-story">
+                            <!-- 由 JS 填充 -->
+                        </div>
+                    </div>
+                    <!-- 右侧：AI对话 -->
+                    <div class="card" style="margin:0;display:flex;flex-direction:column;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                            <h4 style="margin:0;">💬 对话调整</h4>
+                            <button class="btn btn-secondary" id="ai-gen-undo-btn" style="padding:4px 10px;font-size:12px;" onclick="undoAiGenMessage()">↩ 撤回</button>
+                        </div>
+                        <div id="ai-gen-detail-msgs" style="flex:1;overflow-y:auto;background:#f9fafb;border-radius:8px;padding:10px;margin-bottom:10px;font-size:14px;">
+                            <div style="color:#94a3b8;text-align:center;padding:20px;">选择左侧故事后开始对话调整</div>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <input type="text" id="ai-gen-detail-input" placeholder="提出修改要求..." style="flex:1;padding:8px;border:1px solid #e5e7eb;border-radius:8px;">
+                            <button class="btn" id="ai-gen-detail-send-btn" style="padding:8px 16px;">发送</button>
+                        </div>
+                        <div id="ai-gen-detail-loading" style="display:none;text-align:center;margin-top:8px;color:var(--color-text-secondary);font-size:13px;">处理中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; padding: 2rem 0; color: #9ca3af; font-size: 0.9rem; line-height: 1.8;">
+            <a href="https://github.com/mumuhaha487/Turtle_Soup" target="_blank" style="color: inherit; text-decoration: none;">Turtle_Soup</a> 由 <a href="https://github.com/mumuhaha487" target="_blank" style="color: inherit; text-decoration: none;">mumuhaha</a> 构建
+            | <a href="https://beian.miit.gov.cn/" target="_blank" style="color: inherit; text-decoration: none;">赣ICP备2024038464号</a>
+            <br>
+            <span style="font-size: 0.8rem;">社区修改版 by <a href="https://github.com/kaimiituizi" target="_blank" style="color: inherit; text-decoration: none;">凯喵推子</a> | 全 AI 修改 · <a href="https://github.com/kaimiituizi/Turtle_Soup" target="_blank" style="color: inherit; text-decoration: none;">GitHub 仓库</a></span>
         </div>
     </div>
 
@@ -251,37 +369,50 @@
                     <span class="iconify" data-icon="lucide:x" style="font-size: 1.5rem;"></span>
                 </button>
             </div>
-            
+
             <form id="start-form">
                 <input type="hidden" id="start-story-filename">
                 <div class="form-group">
                     <label>你的昵称</label>
                     <input type="text" id="start-nickname" required>
                 </div>
-                
-                <details>
-                    <summary style="cursor: pointer; color: var(--color-text-secondary); margin-bottom: 1rem;">API 设置 (默认已配置)</summary>
-                    <div class="form-group">
-                        <label>Base URL</label>
-                        <input type="text" id="start-base-url" placeholder="默认">
-                    </div>
-                    <div class="form-group">
-                        <label>API Key</label>
-                        <input type="password" id="start-api-key" placeholder="默认">
-                    </div>
-                    <div class="form-group">
-                        <label>模型</label>
-                        <select id="start-model-select" style="width: 100%;">
-                            <option value="gpt-4o">gpt-4o</option>
-                        </select>
-                    </div>
-                </details>
+
+                <div style="font-size:0.85rem;color:var(--color-text-secondary);margin-bottom:1rem;padding:8px 12px;background:#f0fdf4;border-radius:8px;">
+                    <span class="iconify" data-icon="lucide:key"></span>
+                    将使用你首页「API 配置」中保存的所有配置（自动故障转移）
+                </div>
 
                 <button class="btn" type="submit" style="width: 100%; justify-content: center; margin-top: 1rem;">
                     <span class="iconify" data-icon="lucide:play"></span> 立即开始
                 </button>
                 <div id="start-result" style="margin-top: 1rem;"></div>
             </form>
+        </div>
+    </div>
+
+    <!-- 【凯喵推子 / 全AI修改】AI 提示词预设编辑器 -->
+    <div id="preset-editor-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width:700px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+                <h3 style="margin:0;">✏️ AI 生成提示词编辑</h3>
+                <button onclick="closePresetEditor()" style="background:none;border:none;cursor:pointer;font-size:1.5rem;">×</button>
+            </div>
+            <div style="display:flex;gap:0.5rem;margin-bottom:1rem;align-items:center;">
+                <label style="font-weight:600;white-space:nowrap;">预设：</label>
+                <select id="preset-selector" style="flex:1;padding:6px 8px;border:1px solid #e5e7eb;border-radius:6px;" onchange="loadSelectedPreset()"></select>
+                <button class="btn" style="padding:4px 12px;font-size:12px;" onclick="saveCurrentPreset()">💾 保存</button>
+                <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px;" onclick="restoreDefaultPreset()">↩ 恢复默认</button>
+                <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px;" onclick="exportPreset()">📤 导出</button>
+                <button class="btn btn-danger" style="padding:4px 12px;font-size:12px;" onclick="deleteCurrentPreset()">🗑 删除</button>
+                <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px;" onclick="document.getElementById('preset-import-input').click()">📥 导入</button>
+                <input type="file" id="preset-import-input" accept=".json" style="display:none;" onchange="importPreset(event)">
+            </div>
+            <div style="font-size:13px;color:var(--color-text-secondary);margin-bottom:1rem;">
+                编辑 AI 生成故事时使用的提示词。每条消息有不同角色（system/user/assistant），AI 会按顺序处理。
+            </div>
+            <div id="preset-messages-container" style="max-height:50vh;overflow-y:auto;"></div>
+            <button class="btn btn-secondary" style="width:100%;justify-content:center;margin-top:0.5rem;padding:6px;" onclick="addPresetMessage()">+ 添加消息</button>
+            <div id="preset-save-result" style="margin-top:0.5rem;font-size:13px;"></div>
         </div>
     </div>
 
@@ -507,62 +638,46 @@
         function openStartModal(filename) {
             document.getElementById('start-story-filename').value = filename;
             document.getElementById('start-modal').classList.add('open');
-            // Init options if needed
-            initPlazaOptions();
         }
         function closeStartModal() {
             document.getElementById('start-modal').classList.remove('open');
         }
 
-        async function initPlazaOptions() {
-            try {
-                const resp = await fetch('/api/get_options');
-                const data = await resp.json();
-                const select = document.getElementById('start-model-select');
-                if (data.options && data.options.models) {
-                    select.innerHTML = data.options.models.map(m => `<option value="${m}">${m}</option>`).join('');
-                }
-            } catch(e) {}
-        }
-
+        // 【凯喵推子 / 全AI修改】开始挑战 — 使用本地 API 配置创建房间
         document.getElementById('start-form').onsubmit = async (e) => {
             e.preventDefault();
-            const nickname = document.getElementById('start-nickname').value;
-            // Use defaults if empty, logic similar to original but simplified for UX
-            // Here assuming backend handles defaults or we pass empty if not provided?
-            // Original code used dropdowns OR inputs.
-            // Simplified: Just use input values, or defaults if implemented in backend/frontend.
-            // For now, let's keep it simple:
-            const baseUrl = document.getElementById('start-base-url').value || 'http://api.0ha.top/v1'; 
-            const apiKey = document.getElementById('start-api-key').value; // if empty, maybe backend fails?
-            const model = document.getElementById('start-model-select').value;
-            
+            const nickname = document.getElementById('start-nickname').value.trim();
             if (!nickname) return alert('请输入昵称');
 
+            // 从 localStorage 读取 API 配置
+            let profiles;
             try {
-                // 1. Create Room
+                profiles = JSON.parse(localStorage.getItem('haigui_api_profiles') || '[]');
+            } catch(ex) { profiles = []; }
+            if (profiles.length === 0) {
+                return alert('请先在首页「API 配置」中添加 API 配置');
+            }
+            const apiProfiles = profiles.map(p => ({base_url: p.base_url, api_key: p.api_key, model: p.model}));
+
+            try {
                 const res = await fetch('/api/create_room', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({nickname, base_url: baseUrl, api_key: apiKey || 'sk-xxx', model}) // Placeholder key if empty
+                    body: JSON.stringify({nickname, api_profiles: apiProfiles})
                 });
                 const data = await res.json();
-                if (!data.room_code) throw new Error(data.error || '创建房间失败');
+                if (!data.code) throw new Error(data.error || '创建房间失败');
 
-                // 2. Load Story
                 const res2 = await fetch('/api/load_story_from_plaza', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({code: data.room_code, nickname, filename: document.getElementById('start-story-filename').value})
+                    body: JSON.stringify({code: data.code, nickname, filename: document.getElementById('start-story-filename').value})
                 });
                 const data2 = await res2.json();
                 if (!data2.success) throw new Error(data2.error || '加载故事失败');
 
-                // 3. Redirect
-                localStorage.setItem('haigui_room', JSON.stringify({roomCode: data.room_code, nickname, isOwner: true}));
-                window.location.href = '/'; // Or /room/code? 
-                // Original redirected to / or used localStorage to resume. 
-                // Wait, original said `window.location.href = '/'`. I'll follow that.
+                localStorage.setItem('haigui_room', JSON.stringify({roomCode: data.code, nickname, isOwner: true}));
+                window.location.href = '/';
             } catch(err) {
                 alert(err.message);
             }
@@ -570,6 +685,853 @@
 
         // Init
         loadStories();
+
+        // =====================================================================
+        // 【凯喵推子 / 全AI修改】AI 生成故事 — 独立标签页（重构版）
+        // 功能: 上方卡片流 + 下方历史记录 → 点击进入详情子界面（类房间布局）
+        //       左侧故事信息（汤面/汤底折叠/胜利条件/补充）+ 右侧AI对话 + 撤回
+        // =====================================================================
+
+        const AI_GEN_HISTORY_KEY = 'haigui_ai_gen_history';
+
+        function getAiGenHistory() {
+            try { return JSON.parse(localStorage.getItem(AI_GEN_HISTORY_KEY) || '[]'); }
+            catch(e) { return []; }
+        }
+        function saveAiGenHistory(hist) {
+            localStorage.setItem(AI_GEN_HISTORY_KEY, JSON.stringify(hist));
+        }
+
+        // --- 渲染卡片流和历史记录 ---
+        function renderAiGenCardsAndHistory() {
+            const hist = getAiGenHistory();
+            // 卡片流
+            const cardsContainer = document.getElementById('ai-gen-cards');
+            if (cardsContainer) {
+                if (hist.length === 0) {
+                    cardsContainer.innerHTML = '<div style="color:#94a3b8;padding:10px;font-size:14px;">还没有生成记录，在上方填写要求开始生成</div>';
+                } else {
+                    cardsContainer.innerHTML = hist.map((item, idx) => `
+                        <div onclick="openAiGenDetail(${idx})" style="flex:0 0 200px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);padding:16px;cursor:pointer;border:1px solid #e5e7eb;transition:all 0.2s;"
+                             onmouseover="this.style.borderColor='#059669'" onmouseout="this.style.borderColor='#e5e7eb'">
+                            <div style="font-weight:600;font-size:14px;margin-bottom:6px;">${escapeHtml(item.name || '未命名')}</div>
+                            <div style="font-size:12px;color:#64748b;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5;">
+                                ${escapeHtml((item.story && item.story.surface) || '')}
+                            </div>
+                            <div style="font-size:11px;color:#94a3b8;margin-top:8px;">
+                                ${item.messages ? item.messages.length/2 + '轮调整' : '刚生成'} · ${new Date(item.createdAt).toLocaleDateString()}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+            // 历史列表
+            const container = document.getElementById('plaza-ai-history');
+            if (!container) return;
+            if (hist.length === 0) {
+                container.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:12px;">暂无记录</div>';
+                return;
+            }
+            container.innerHTML = hist.map((item, idx) => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#f8fafc;border-radius:6px;margin-bottom:6px;border:1px solid #e5e7eb;cursor:pointer;"
+                     onclick="openAiGenDetail(${idx})">
+                    <div>
+                        <div style="font-weight:600;font-size:13px;">${escapeHtml(item.name || '未命名')}</div>
+                        <div style="font-size:11px;color:#94a3b8;">${item.messages ? (item.messages.length/2) + ' 轮对话' : '仅生成'} · ${new Date(item.createdAt).toLocaleDateString()}</div>
+                    </div>
+                    <button class="btn btn-danger" style="padding:2px 8px;font-size:11px;" onclick="event.stopPropagation();deleteAiGenHistory(${idx})">删除</button>
+                </div>
+            `).join('');
+        }
+
+        window.deleteAiGenHistory = function(idx) {
+            let hist = getAiGenHistory();
+            hist.splice(idx, 1);
+            saveAiGenHistory(hist);
+            renderAiGenCardsAndHistory();
+        };
+
+        // --- 打开详情子界面 ---
+        window.openAiGenDetail = function(idx) {
+            const hist = getAiGenHistory();
+            const item = hist[idx];
+            if (!item) return;
+            window._currentGenIdx = idx;
+            window._currentGenStory = item.story;
+            window._currentGenName = item.name || '';
+            window._currentGenPassword = item.password || '';
+            window._currentGenMessages = item.messages ? [...item.messages] : [];
+
+            // 显示详情界面，隐藏主界面
+            document.getElementById('ai-gen-main').style.display = 'none';
+            document.getElementById('ai-gen-detail').style.display = 'block';
+            document.getElementById('ai-gen-detail-name').textContent = item.name || '故事详情';
+
+            // 填充左侧故事信息
+            renderDetailStory(item.story, item.name || '');
+
+            // 填充右侧对话
+            const msgsDiv = document.getElementById('ai-gen-detail-msgs');
+            if (item.messages && item.messages.length > 0) {
+                msgsDiv.innerHTML = item.messages.map(m =>
+                    m.role === 'user'
+                        ? `<div style="text-align:right;margin:4px 0;color:#3b82f6;">🧑 ${escapeHtml(m.content)}</div>`
+                        : `<div style="margin:4px 0;background:white;padding:8px;border-radius:6px;">🤖 ${escapeHtml(m.content)}</div>`
+                ).join('');
+            } else {
+                msgsDiv.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:20px;">开始对话调整故事 👇</div>';
+            }
+        };
+
+        // --- 关闭详情子界面 ---
+        window.closeAiGenDetail = function() {
+            document.getElementById('ai-gen-main').style.display = 'block';
+            document.getElementById('ai-gen-detail').style.display = 'none';
+            // 保存到历史
+            let hist = getAiGenHistory();
+            if (window._currentGenIdx !== undefined && hist[window._currentGenIdx]) {
+                hist[window._currentGenIdx].story = window._currentGenStory;
+                hist[window._currentGenIdx].messages = window._currentGenMessages;
+                saveAiGenHistory(hist);
+                renderAiGenCardsAndHistory();
+            }
+        };
+
+        // --- 渲染左侧故事信息 ---
+        function renderDetailStory(story, name) {
+            const container = document.getElementById('ai-gen-detail-story');
+            container.innerHTML = `
+                <div style="margin-bottom:10px;">
+                    <label style="font-weight:600;font-size:14px;">📌 故事名称</label>
+                    <input type="text" id="detail-story-name" value="${escapeHtml(name || '')}" style="width:100%;padding:6px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:14px;margin-top:4px;">
+                </div>
+                <div style="background:#f0fdf4;border-radius:8px;padding:12px;margin-bottom:10px;">
+                    <div style="font-weight:600;color:#059669;margin-bottom:4px;">📖 汤面</div>
+                    <div style="white-space:pre-wrap;font-size:14px;line-height:1.6;">${escapeHtml(story.surface)}</div>
+                </div>
+                <details open style="margin-bottom:10px;">
+                    <summary style="cursor:pointer;font-weight:600;color:#dc2626;padding:4px 0;font-size:14px;">🔑 汤底</summary>
+                    <div style="background:#fef2f2;border-radius:8px;padding:12px;margin-top:6px;">
+                        <div style="white-space:pre-wrap;font-size:14px;line-height:1.6;">${escapeHtml(story.answer || '无')}</div>
+                    </div>
+                </details>
+                <div style="background:#fef3c7;border-radius:8px;padding:12px;margin-bottom:10px;">
+                    <div style="font-weight:600;color:#d97706;margin-bottom:4px;">🏆 胜利条件</div>
+                    <div style="font-size:14px;">${escapeHtml(story.victory_condition || '未设置')}</div>
+                </div>
+                <div style="background:#f1f5f9;border-radius:8px;padding:12px;margin-bottom:10px;font-size:13px;color:#64748b;">
+                    <div style="font-weight:600;margin-bottom:2px;">ℹ️ 补充说明</div>
+                    <div>${escapeHtml(story.additional || '无')}</div>
+                </div>
+                <button class="btn btn-secondary" onclick="fillEditForm()" style="width:100%;justify-content:center;padding:6px;font-size:13px;margin-bottom:8px;">
+                    📥 填入编辑表单
+                </button>
+                <div id="detail-publish-result" style="margin-top:8px;"></div>
+            `;
+        }
+
+        // --- 通用提取函数：从 AI 回复中提取故事 JSON ---
+function extractStoryFromText(text) {
+    if (!text) return null;
+    var jsonStr = null;
+    // 1) Try code block: find ```json ... ``` or ``` ... ```
+    var start = text.indexOf("```");
+    if (start !== -1) {
+        var end = text.indexOf("```", start + 3);
+        if (end !== -1) {
+            jsonStr = text.substring(start + 3, end).trim();
+            // Remove leading "json" if present
+            if (jsonStr.indexOf("json") === 0) jsonStr = jsonStr.substring(4).trim();
+        }
+    }
+    // 2) Fallback: find first { ... }
+    if (!jsonStr) {
+        var braceStart = text.indexOf("{");
+        if (braceStart !== -1) {
+            var depth = 0, braceEnd = -1;
+            for (var i = braceStart; i < text.length; i++) {
+                if (text[i] === "{") depth++;
+                else if (text[i] === "}") { depth--; if (depth === 0) { braceEnd = i; break; } }
+            }
+            if (braceEnd !== -1) jsonStr = text.substring(braceStart, braceEnd + 1);
+        }
+    }
+    if (!jsonStr) return null;
+    try {
+        var p = JSON.parse(jsonStr);
+        var keyMap = {surface:["surface","汤面"],answer:["answer","汤底"],victory_condition:["victory_condition","胜利条件"],additional:["additional","补充说明"]};
+        var r = {};
+        for (var key in keyMap) {
+            var aliases = keyMap[key];
+            for (var ai = 0; ai < aliases.length; ai++) {
+                if (p[aliases[ai]] !== undefined) { r[key] = p[aliases[ai]]; break; }
+            }
+        }
+        if (r.surface && r.answer) return r;
+    } catch(e) {}
+    return null;
+}
+
+        // --- 填入编辑表单（更新左侧故事面板 + 追加跳转按钮） ---
+        window.fillEditForm = async function() {
+            // 从对话消息中从下往上扫描最新 JSON 故事数据（使用通用提取函数）
+            let storyData = null;
+            if (window._currentGenMessages && window._currentGenMessages.length > 0) {
+                for (let i = window._currentGenMessages.length - 1; i >= 0; i--) {
+                    const msg = window._currentGenMessages[i];
+                    if (msg.role === 'assistant') {
+                        storyData = extractStoryFromText(msg.content);
+                        if (storyData) break;
+                    }
+                }
+            }
+            const story = storyData || window._currentGenStory;
+            if (!story) return alert('没有可填入的故事数据');
+
+            // 对比差异
+            const current = window._currentGenStory;
+            let diffHtml = '';
+            if (storyData && current) {
+                diffHtml = '<div style="font-size:13px;margin:8px 0;padding:8px;background:#f3f4f6;border-radius:6px;">';
+                if (story.surface !== current.surface) diffHtml += '📖 汤面 有更新<br>';
+                if (story.answer !== current.answer) diffHtml += '🔑 汤底 有更新<br>';
+                if (story.victory_condition !== current.victory_condition) diffHtml += '🏆 胜利条件 有更新<br>';
+                if (story.additional !== current.additional) diffHtml += 'ℹ️ 补充说明 有更新<br>';
+                if (diffHtml === '<div style="font-size:13px;margin:8px 0;padding:8px;background:#f3f4f6;border-radius:6px;">') diffHtml += '无变更';
+                diffHtml += '</div>';
+            }
+            const confirmed = await showConfirm('确认应用',
+                storyData ? '从对话中提取到最新数据：' + diffHtml : '应用当前故事数据？');
+            if (!confirmed) return;
+
+            // 更新左侧故事面板（无论是否有新数据都更新）
+            if (storyData) {
+                window._currentGenStory = storyData;
+            }
+            const name = document.getElementById('detail-story-name')?.value || '';
+            renderDetailStory(window._currentGenStory, name);
+
+            // 在左侧面板追加「跳转到编辑页」按钮
+            const container = document.getElementById('ai-gen-detail-story');
+            const jumpBtn = document.createElement('button');
+            jumpBtn.className = 'btn';
+            jumpBtn.style = 'width:100%;justify-content:center;padding:6px;font-size:13px;margin-top:4px;';
+            jumpBtn.innerHTML = '📝 跳转到编辑页';
+            jumpBtn.onclick = function() {
+                document.getElementById('edit-surface').value = window._currentGenStory.surface || '';
+                document.getElementById('edit-answer').value = window._currentGenStory.answer || '';
+                document.getElementById('edit-victory').value = window._currentGenStory.victory_condition || '';
+                document.getElementById('edit-additional').value = window._currentGenStory.additional || '';
+                switchTab('manage');
+                document.getElementById('edit-form').style.display = 'block';
+                document.querySelector('#manage .card').scrollIntoView({behavior: 'smooth'});
+            };
+            container.appendChild(jumpBtn);
+        };
+
+        // --- 发送对话消息 ---
+        document.getElementById('ai-gen-detail-send-btn').onclick = sendDetailMessage;
+        document.getElementById('ai-gen-detail-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') sendDetailMessage();
+        });
+
+        async function sendDetailMessage() {
+            const input = document.getElementById('ai-gen-detail-input');
+            const message = input.value.trim();
+            if (!message || !window._currentGenStory) return;
+
+            const msgsDiv = document.getElementById('ai-gen-detail-msgs');
+            const loading = document.getElementById('ai-gen-detail-loading');
+
+            msgsDiv.innerHTML += `<div style="text-align:right;margin:4px 0;color:#3b82f6;">🧑 ${escapeHtml(message)}</div>`;
+            input.value = '';
+            loading.style.display = 'block';
+
+            try {
+                const story = window._currentGenStory;
+                const systemMsg = `你是海龟汤故事编辑助手。当前故事如下：\n汤面：${story.surface}\n汤底：${story.answer}\n补充说明：${story.additional}\n胜利条件：${story.victory_condition}\n\n用户会提出修改要求，请先简要说明修改内容，然后以JSON格式输出完整的更新后的故事。`;
+
+                let profiles;
+                try { profiles = JSON.parse(localStorage.getItem('haigui_api_profiles') || '[]'); }
+                catch(e) { profiles = []; }
+                if (profiles.length === 0) throw new Error('未配置API');
+                const p = profiles[0];
+
+                const chatMessages = [{role:'system', content: systemMsg}];
+                if (window._currentGenMessages) {
+                    window._currentGenMessages.forEach(m => chatMessages.push(m));
+                }
+                chatMessages.push({role: 'user', content: message});
+
+                const res = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({base_url: p.base_url, api_key: p.api_key, model: p.model, messages: chatMessages})
+                });
+                const data = await res.json();
+                loading.style.display = 'none';
+                if (data.reply) {
+                    msgsDiv.innerHTML += `<div style="margin:4px 0;background:white;padding:8px;border-radius:6px;">🤖 ${escapeHtml(data.reply)}</div>`;
+                    if (!window._currentGenMessages) window._currentGenMessages = [];
+                    window._currentGenMessages.push({role: 'user', content: message});
+                    window._currentGenMessages.push({role: 'assistant', content: data.reply});
+                    // 提取更新后的故事（使用通用提取函数）
+                    const updated = extractStoryFromText(data.reply);
+                    if (updated) {
+                        const confirmMsg = '检测到AI返回了更新后的故事数据：\n\n📖 ' + (updated.surface || '').substring(0, 50) + '...\n\n是否应用？';
+                        const confirmed = await showConfirm('应用故事更新', confirmMsg);
+                        if (confirmed) {
+                            window._currentGenStory = updated;
+                            renderDetailStory(window._currentGenStory, document.getElementById('detail-story-name')?.value || '');
+                        }
+                    }
+                    // 实时保存到历史
+                    let hist = getAiGenHistory();
+                    if (window._currentGenIdx !== undefined && hist[window._currentGenIdx]) {
+                        hist[window._currentGenIdx].messages = window._currentGenMessages;
+                        hist[window._currentGenIdx].story = window._currentGenStory;
+                        saveAiGenHistory(hist);
+                    }
+                    msgsDiv.scrollTop = msgsDiv.scrollHeight;
+                } else {
+                    msgsDiv.innerHTML += `<div style="color:red;">错误：${data.error || '调整失败'}</div>`;
+                }
+            } catch(e) {
+                loading.style.display = 'none';
+                msgsDiv.innerHTML += `<div style="color:red;">错误：${e.message}</div>`;
+            }
+        }
+
+        // --- 撤回按钮：移除最后一条对话 ---
+        window.undoAiGenMessage = function() {
+            if (!window._currentGenMessages || window._currentGenMessages.length < 2) return;
+            // 移除最后两条（用户消息 + AI回复）
+            window._currentGenMessages.pop();
+            window._currentGenMessages.pop();
+            // 重新渲染对话
+            const msgsDiv = document.getElementById('ai-gen-detail-msgs');
+            if (window._currentGenMessages.length === 0) {
+                msgsDiv.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:20px;">开始对话调整故事 👇</div>';
+            } else {
+                msgsDiv.innerHTML = window._currentGenMessages.map(m =>
+                    m.role === 'user'
+                        ? `<div style="text-align:right;margin:4px 0;color:#3b82f6;">🧑 ${escapeHtml(m.content)}</div>`
+                        : `<div style="margin:4px 0;background:white;padding:8px;border-radius:6px;">🤖 ${escapeHtml(m.content)}</div>`
+                ).join('');
+            }
+            // 恢复之前的故事版本（从历史中找）
+            let hist = getAiGenHistory();
+            if (window._currentGenIdx !== undefined && hist[window._currentGenIdx]) {
+                // 如果还有历史记录，用最近的非空版本
+                // 简单策略：撤回后不清除故事，保留当前显示
+                saveAiGenHistory(hist);
+            }
+        };
+
+        // --- 发布 ---
+        window.publishGenStory = async function() {
+            const story = window._currentGenStory;
+            const password = window._currentGenPassword;
+            const nameInput = document.getElementById('detail-story-name');
+            const name = nameInput ? nameInput.value.trim() : 'AI生成故事';
+            if (!story || !password) return alert('数据不完整');
+            try {
+                const res = await fetch('/api/submit_story_online', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name, password,
+                        surface: story.surface,
+                        answer: story.answer,
+                        victory_condition: story.victory_condition,
+                        additional: story.additional
+                    })
+                });
+                const data = await res.json();
+                const resultDiv = document.getElementById('detail-publish-result');
+                if (data.success) {
+                    resultDiv.innerHTML = `<div style="color:#059669;font-weight:600;">✅ 发布成功！编号 ${data.id}</div>`;
+                    let hist = getAiGenHistory();
+                    if (window._currentGenIdx !== undefined && hist[window._currentGenIdx]) {
+                        hist[window._currentGenIdx].name = name;
+                        saveAiGenHistory(hist);
+                    }
+                } else {
+                    resultDiv.innerHTML = `<div style="color:#ef4444;">❌ ${data.error || '发布失败'}</div>`;
+                }
+            } catch(e) { alert('发布失败：网络错误'); }
+        };
+
+        // --- 在线编辑 ---
+        window.fillOnlineForm = function() {
+            const story = window._currentGenStory;
+            const password = window._currentGenPassword;
+            const nameInput = document.getElementById('detail-story-name');
+            const name = nameInput ? nameInput.value.trim() : 'AI生成故事';
+            if (!story) return;
+            document.getElementById('online-name').value = name;
+            document.getElementById('online-password').value = password || '';
+            document.getElementById('online-surface').value = story.surface || '';
+            document.getElementById('online-answer').value = story.answer || '';
+            document.getElementById('online-victory').value = story.victory_condition || '';
+            document.getElementById('online-additional').value = story.additional || '';
+            switchTab('create');
+            const onlineCards = document.querySelectorAll('#create .card');
+            if (onlineCards.length > 1) onlineCards[1].scrollIntoView({behavior: 'smooth'});
+            alert('故事已填入表单，请检查后点击发布');
+        };
+
+        // --- 生成表单提交 ---
+        document.getElementById('plaza-ai-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('plaza-ai-name').value.trim() || 'AI生成故事';
+            const prompt = document.getElementById('plaza-ai-prompt').value.trim();
+            const password = document.getElementById('plaza-ai-password').value.trim();
+            if (!prompt) { alert('请填写故事要求'); return; }
+            if (!password) { alert('请填写管理密码'); return; }
+
+            let profiles;
+            try { profiles = JSON.parse(localStorage.getItem('haigui_api_profiles') || '[]'); }
+            catch(e) { profiles = []; }
+            if (profiles.length === 0) { alert('请先在首页「API 配置」中添加API配置'); return; }
+            const apiProfiles = profiles.map(p => ({base_url: p.base_url, api_key: p.api_key, model: p.model}));
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            const loading = document.getElementById('plaza-ai-loading');
+            const error = document.getElementById('plaza-ai-error');
+
+            btn.disabled = true;
+            loading.style.display = 'block';
+            error.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/ai_generate_plaza', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prompt, password, profiles: apiProfiles})
+                });
+                const data = await res.json();
+                loading.style.display = 'none';
+                if (data.success && data.story) {
+                    window._currentGenStory = data.story;
+                    window._currentGenName = name;
+                    window._currentGenPassword = password;
+                    window._currentGenMessages = [];
+                    // 存入历史并打开详情
+                    let hist = getAiGenHistory();
+                    hist.unshift({
+                        name, story: data.story, password,
+                        messages: [], createdAt: Date.now()
+                    });
+                    if (hist.length > 20) hist = hist.slice(0, 20);
+                    saveAiGenHistory(hist);
+                    renderAiGenCardsAndHistory();
+                    // 自动打开详情
+                    openAiGenDetail(0);
+                } else {
+                    error.textContent = data.error || '生成失败';
+                    error.style.display = 'block';
+                }
+            } catch (e) {
+                loading.style.display = 'none';
+                error.textContent = '网络错误，请重试';
+                error.style.display = 'block';
+            }
+            btn.disabled = false;
+        };
+
+        // --- 初始化 ---
+        renderAiGenCardsAndHistory();
+
+        // =====================================================================
+        // 【凯喵推子 / 全AI修改】AI 提示词预设编辑器
+        // =====================================================================
+        let _currentPresetFilename = 'default.json';
+        let _currentPresetMessages = [];
+
+        window.showPresetEditor = function() {
+            document.getElementById('preset-editor-modal').classList.add('open');
+            loadPresetList();
+        };
+        window.closePresetEditor = function() {
+            document.getElementById('preset-editor-modal').classList.remove('open');
+        };
+
+        async function loadPresetList() {
+            try {
+                const res = await fetch('/api/presets');
+                const data = await res.json();
+                const sel = document.getElementById('preset-selector');
+                sel.innerHTML = data.presets.map(p =>
+                    `<option value="${p.filename}">${p.name}${p.is_default ? ' (默认)' : ''}</option>`
+                ).join('');
+                if (sel.options.length > 0) {
+                    sel.value = _currentPresetFilename;
+                    if (!sel.value) sel.value = 'default.json';
+                    loadSelectedPreset();
+                }
+            } catch(e) { console.error('加载预设列表失败', e); }
+        }
+
+        window.loadSelectedPreset = async function() {
+            const filename = document.getElementById('preset-selector').value;
+            if (!filename) return;
+            _currentPresetFilename = filename;
+            try {
+                const res = await fetch('/api/presets/get', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({filename})
+                });
+                const data = await res.json();
+                if (data.preset) {
+                    _currentPresetMessages = data.preset.messages || [];
+                    renderPresetMessages();
+                }
+            } catch(e) { console.error('加载预设失败', e); }
+        };
+
+        function renderPresetMessages() {
+            const container = document.getElementById('preset-messages-container');
+            if (_currentPresetMessages.length === 0) {
+                container.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:20px;">暂无消息，点击下方添加</div>';
+                return;
+            }
+            container.innerHTML = _currentPresetMessages.map((msg, idx) => `
+                <div style="background:#f8fafc;border-radius:8px;padding:12px;margin-bottom:8px;border:1px solid #e5e7eb;">
+                    <div style="display:flex;gap:8px;margin-bottom:6px;align-items:center;">
+                        <select onchange="updatePresetMsg(${idx},'role',this.value)" style="padding:4px 6px;border:1px solid #e5e7eb;border-radius:4px;font-size:13px;">
+                            <option value="system" ${msg.role === 'system' ? 'selected' : ''}>system</option>
+                            <option value="user" ${msg.role === 'user' ? 'selected' : ''}>user</option>
+                            <option value="assistant" ${msg.role === 'assistant' ? 'selected' : ''}>assistant</option>
+                        </select>
+                        <span style="font-size:12px;color:#94a3b8;">第 ${idx+1} 层</span>
+                        <button style="margin-left:auto;background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px;" onclick="removePresetMessage(${idx})">×</button>
+                    </div>
+                    <textarea rows="3" style="width:100%;padding:6px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;font-family:monospace;"
+                        onchange="updatePresetMsg(${idx},'content',this.value)">${escapeHtml(msg.content || '')}</textarea>
+                </div>
+            `).join('');
+        }
+
+        window.updatePresetMsg = function(idx, field, value) {
+            if (_currentPresetMessages[idx]) {
+                _currentPresetMessages[idx][field] = value;
+            }
+        };
+
+        window.addPresetMessage = function() {
+            _currentPresetMessages.push({role: 'system', content: ''});
+            renderPresetMessages();
+        };
+
+        window.removePresetMessage = function(idx) {
+            _currentPresetMessages.splice(idx, 1);
+            renderPresetMessages();
+        };
+
+        window.saveCurrentPreset = async function() {
+            // Sync textareas
+            const textareas = document.querySelectorAll('#preset-messages-container textarea');
+            textareas.forEach((ta, idx) => {
+                if (_currentPresetMessages[idx]) _currentPresetMessages[idx].content = ta.value;
+            });
+            const name = document.getElementById('preset-selector').options[document.getElementById('preset-selector').selectedIndex]?.text?.replace(' (默认)', '') || '自定义预设';
+            try {
+                const res = await fetch('/api/presets/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name, messages: _currentPresetMessages})
+                });
+                const data = await res.json();
+                const resultDiv = document.getElementById('preset-save-result');
+                if (data.success) {
+                    resultDiv.innerHTML = '<span style="color:#059669;">✅ 保存成功</span>';
+                    // 存入 localStorage 作为当前选中
+                    localStorage.setItem('haigui_current_preset', JSON.stringify({filename: data.filename, messages: _currentPresetMessages}));
+                    loadPresetList();
+                } else {
+                    resultDiv.innerHTML = `<span style="color:#ef4444;">❌ ${data.error}</span>`;
+                }
+            } catch(e) { alert('保存失败'); }
+        };
+
+        window.restoreDefaultPreset = async function() {
+            if (!confirm('确定恢复默认预设吗？自定义预设不会丢失。')) return;
+            try {
+                const res = await fetch('/api/presets/restore_default', {method:'POST'});
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('preset-selector').value = 'default.json';
+                    _currentPresetMessages = data.preset.messages || [];
+                    renderPresetMessages();
+                    localStorage.removeItem('haigui_current_preset');
+                    document.getElementById('preset-save-result').innerHTML = '<span style="color:#059669;">✅ 已恢复默认预设</span>';
+                }
+            } catch(e) { alert('恢复失败'); }
+        };
+
+        window.exportPreset = async function() {
+            const filename = document.getElementById('preset-selector').value;
+            if (!filename) return;
+            try {
+                const res = await fetch('/api/presets/get', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({filename})
+                });
+                const data = await res.json();
+                if (data.preset) {
+                    const blob = new Blob([JSON.stringify(data.preset, null, 2)], {type:'application/json'});
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = filename;
+                    a.click();
+                }
+            } catch(e) { alert('导出失败'); }
+        };
+
+        window.importPreset = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const preset = JSON.parse(e.target.result);
+                    if (!preset.messages || !Array.isArray(preset.messages)) {
+                        alert('无效的预设文件：缺少 messages 数组');
+                        return;
+                    }
+                    const name = preset.name || file.name.replace('.json', '');
+                    const res = await fetch('/api/presets/save', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({name, messages: preset.messages})
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        document.getElementById('preset-save-result').innerHTML = `<span style="color:#059669;">✅ 导入成功：${name}</span>`;
+                        loadPresetList();
+                    } else {
+                        alert('导入失败：' + (data.error || '未知错误'));
+                    }
+                } catch(ex) { alert('文件解析失败，请检查 JSON 格式'); }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        };
+
+        // 在生成表单提交中使用当前预设
+        const origFormSubmit = document.getElementById('plaza-ai-form').onsubmit;
+        document.getElementById('plaza-ai-form').onsubmit = async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('plaza-ai-name').value.trim() || 'AI生成故事';
+            const prompt = document.getElementById('plaza-ai-prompt').value.trim();
+            const password = document.getElementById('plaza-ai-password').value.trim();
+            if (!prompt) { alert('请填写故事要求'); return; }
+            if (!password) { alert('请填写管理密码'); return; }
+
+            let profiles;
+            try { profiles = JSON.parse(localStorage.getItem('haigui_api_profiles') || '[]'); }
+            catch(ex) { profiles = []; }
+            if (profiles.length === 0) { alert('请先在首页「API 配置」中添加API配置'); return; }
+            const apiProfiles = profiles.map(p => ({base_url: p.base_url, api_key: p.api_key, model: p.model}));
+
+            // 获取当前预设消息
+            let presetMessages = [];
+            const stored = localStorage.getItem('haigui_current_preset');
+            if (stored) {
+                try { presetMessages = JSON.parse(stored).messages || []; } catch(ex) {}
+            }
+            if (presetMessages.length === 0 && _currentPresetMessages.length > 0) {
+                presetMessages = _currentPresetMessages;
+            }
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            const loading = document.getElementById('plaza-ai-loading');
+            const error = document.getElementById('plaza-ai-error');
+
+            btn.disabled = true;
+            loading.style.display = 'block';
+            error.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/ai_generate_plaza', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        prompt, password, profiles: apiProfiles,
+                        preset_messages: presetMessages.length > 0 ? presetMessages : undefined
+                    })
+                });
+                const data = await res.json();
+                loading.style.display = 'none';
+                if (data.success && data.story) {
+                    window._currentGenStory = data.story;
+                    window._currentGenName = name;
+                    window._currentGenPassword = password;
+                    window._currentGenMessages = [];
+                    let hist = getAiGenHistory();
+                    hist.unshift({name, story: data.story, password, messages: [], createdAt: Date.now()});
+                    if (hist.length > 20) hist = hist.slice(0, 20);
+                    saveAiGenHistory(hist);
+                    renderAiGenCardsAndHistory();
+                    openAiGenDetail(0);
+                } else {
+                    error.textContent = data.error || '生成失败';
+                    error.style.display = 'block';
+                }
+            } catch (e) {
+                loading.style.display = 'none';
+                error.textContent = '网络错误，请重试';
+                error.style.display = 'block';
+            }
+            btn.disabled = false;
+        };
+
+        // =====================================================================
+        // 【凯喵推子 / 全AI修改】浏览故事删除 + 预设删除 + 确认弹窗
+        // =====================================================================
+
+        // --- 通用确认弹窗 ---
+        window.showConfirm = function(title, message) {
+            return new Promise((resolve) => {
+                const overlay = document.createElement('div');
+                overlay.className = 'confirm-overlay';
+                overlay.innerHTML = `
+                    <div class="confirm-dialog">
+                        <h3>${escapeHtml(title)}</h3>
+                        <p style="color:#4b5563;">${escapeHtml(message)}</p>
+                        <div class="btn-row">
+                            <button class="btn btn-secondary" id="confirm-cancel">取消</button>
+                            <button class="btn btn-danger" id="confirm-ok">确认</button>
+                        </div>
+                    </div>`;
+                document.body.appendChild(overlay);
+                document.getElementById('confirm-cancel').onclick = () => { overlay.remove(); resolve(false); };
+                document.getElementById('confirm-ok').onclick = () => { overlay.remove(); resolve(true); };
+            });
+        };
+
+        // --- 删除单个故事 ---
+        window.deleteSingleStory = async function(event, filename) {
+            event.stopPropagation();
+            const ok = await showConfirm('删除故事', '确定要删除这个故事吗？此操作不可撤销。');
+            if (!ok) return;
+            try {
+                const res = await fetch('/api/delete_stories', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({filenames: [filename]})
+                });
+                const data = await res.json();
+                if (data.success && data.deleted > 0) {
+                    loadStories();
+                } else {
+                    alert('删除失败：' + (data.errors ? data.errors[0] : '未知错误'));
+                }
+            } catch(e) { alert('网络错误'); }
+        };
+
+        // --- 批量删除 ---
+        window.batchDeleteStories = async function() {
+            const checked = document.querySelectorAll('.story-checkbox:checked');
+            if (checked.length === 0) return;
+            const ok = await showConfirm('批量删除', `确定要删除选中的 ${checked.length} 个故事吗？`);
+            if (!ok) return;
+            const filenames = Array.from(checked).map(cb => cb.getAttribute('data-filename'));
+            try {
+                const res = await fetch('/api/delete_stories', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({filenames})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    loadStories();
+                } else {
+                    alert('删除失败');
+                }
+            } catch(e) { alert('网络错误'); }
+        };
+
+        // --- 更新批量删除按钮状态 ---
+        window.updateBatchDeleteBtn = function() {
+            const checked = document.querySelectorAll('.story-checkbox:checked');
+            const btn = document.getElementById('batch-delete-btn');
+            if (btn) btn.style.display = checked.length > 0 ? '' : 'none';
+        };
+
+        // --- 删除预设 ---
+        window.deleteCurrentPreset = async function() {
+            const sel = document.getElementById('preset-selector');
+            const filename = sel.value;
+            if (!filename || filename === 'default.json') {
+                alert('不能删除默认预设');
+                return;
+            }
+            const ok = await showConfirm('删除预设', `确定要删除预设「${sel.options[sel.selectedIndex].text}」吗？`);
+            if (!ok) return;
+            try {
+                const res = await fetch('/api/presets/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({filename})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('preset-selector').value = 'default.json';
+                    loadPresetList();
+                    document.getElementById('preset-save-result').innerHTML = '<span style="color:#059669;">✅ 已删除</span>';
+                } else {
+                    alert(data.error || '删除失败');
+                }
+            } catch(e) { alert('网络错误'); }
+        };
+
+        // --- 重写 renderStories 加入 checkbox + 删除按钮 ---
+        const _origRenderStories = renderStories;
+        renderStories = function(stories) {
+            const grid = document.getElementById('stories-grid');
+            const countEl = document.getElementById('story-count');
+            if (countEl) countEl.textContent = `共 ${stories.length} 个故事`;
+            if (stories.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #9ca3af; padding: 3rem;">暂无故事，快去发布一个吧！</div>';
+                return;
+            }
+            grid.innerHTML = stories.map((story, index) => {
+                const seed = story.id ? story.id.replace(/\D/g, '') : index;
+                const imgUrl = `https://picsum.photos/seed/${seed}/400/300`;
+                return `
+                <div class="card story-card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;margin-bottom:0;position:relative;">
+                    <div style="height:160px;overflow:hidden;">
+                        <img src="${imgUrl}" alt="Cover" style="width:100%;height:100%;object-fit:cover;">
+                    </div>
+                    <div style="padding:1.5rem;flex:1;display:flex;flex-direction:column;">
+                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:0.5rem;">
+                            <input type="checkbox" class="story-checkbox" data-filename="${story.filename}" style="margin-right:6px;" onclick="event.stopPropagation();updateBatchDeleteBtn()">
+                            <h3 style="font-size:1.25rem;margin:0;flex:1;">${story.name || '未命名'}</h3>
+                            <span style="font-size:0.75rem;background:#f3f4f6;padding:2px 6px;border-radius:4px;color:#6b7280;">${story.id || '#'}</span>
+                        </div>
+                        <p style="font-size:0.9rem;flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">
+                            ${story.surface || '暂无内容'}
+                        </p>
+                        <button class="btn" onclick="openStartModal('${story.filename}')" style="width:100%;justify-content:center;margin-top:1rem;">
+                            <span class="iconify" data-icon="lucide:play-circle"></span> 开始挑战
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteSingleStory(event,'${story.filename}')" style="width:100%;justify-content:center;margin-top:0.5rem;padding:4px;font-size:12px;">🗑 删除</button>
+                    </div>
+                </div>`;
+            }).join('');
+        };
+
+        // escapeHtml（函数声明，可在本 script 内任意位置引用）
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/[&<>"']/g, function(c) {
+                return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+            });
+        }
     </script>
 </body>
 </html>
