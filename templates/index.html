@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>海龟汤 - 沉浸式推理</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
     <style>
@@ -160,12 +161,16 @@
                         </button>
                     </div>
                     
-                    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                    <div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
                         <button class="btn btn-secondary" onclick="window.location.href='/story_plaza'">
                             <span class="iconify" data-icon="lucide:library"></span> 故事广场
                         </button>
                         <button class="btn btn-secondary" onclick="window.location.href='/story_plaza#edit'">
                             <span class="iconify" data-icon="lucide:edit"></span> 管理我的故事
+                        </button>
+                        <!-- 【凯喵推子 / 全AI修改】新增 API 配置管理入口 -->
+                        <button class="btn btn-secondary" onclick="showApiManager()">
+                            <span class="iconify" data-icon="lucide:key"></span> API 配置
                         </button>
                     </div>
                 </div>
@@ -185,30 +190,7 @@
                     <input type="text" id="create-nickname" maxlength="16" placeholder="例如：福尔摩斯">
                 </div>
                 
-                <details style="margin-bottom: 1.5rem;">
-                    <summary style="cursor: pointer; color: var(--color-text-secondary); margin-bottom: 1rem;">高级 API 设置</summary>
-                    <div class="form-group">
-                        <label>代理地址 (Base URL)</label>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <select id="create-base-url-select" style="width: 50%; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: var(--radius-sm);"></select>
-                            <input type="text" id="create-base-url" placeholder="自定义..." style="flex: 1;">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>API Key</label>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <select id="create-api-key-select" style="width: 50%; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: var(--radius-sm);"></select>
-                            <input type="password" id="create-api-key" placeholder="自定义..." style="flex: 1;">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>模型</label>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <select id="create-model-select" style="width: 50%; padding: 0.5rem; border: 1px solid #e5e7eb; border-radius: var(--radius-sm);"></select>
-                            <input type="text" id="create-model" placeholder="自定义..." style="flex: 1;">
-                        </div>
-                    </div>
-                </details>
+                <!-- 【凯喵推子 / 全AI修改】移除了原"高级 API 设置"区域，改为通过首页"API 配置"按钮统一管理 -->
 
                 <div style="display: flex; gap: 1rem;">
                     <button class="btn" id="create-room-btn" style="flex: 1; justify-content: center;">创建并进入</button>
@@ -271,7 +253,7 @@
                             </div>
                         </div>
                         <div class="chat-input-area">
-                            <textarea id="user-input" rows="1" placeholder="输入你的问题 (支持 Enter 发送)..." style="flex: 1; resize: none;"></textarea>
+                            <textarea id="user-input" rows="3" placeholder="输入你的问题 (支持 Enter 发送)..." style="flex: 1; resize: vertical; min-height: 60px; max-height: 150px;"></textarea>
                             <button class="btn" id="send-btn">
                                 <span class="iconify" data-icon="lucide:send"></span>
                             </button>
@@ -331,11 +313,14 @@
                 </div>
             </div>
         </div>
-    </div>
-    
-    <div style="text-align: center; padding: 2rem 0; color: #9ca3af; font-size: 0.9rem;">
-        <a href="https://github.com/mumuhaha487/Turtle_Soup" target="_blank" style="color: inherit; text-decoration: none;">Turtle_Soup</a> 由 mumuhaha 构建 | <a href="https://beian.miit.gov.cn/" target="_blank" style="color: inherit; text-decoration: none;">赣ICP备2024038464号</a>
-    </div>
+
+        <div style="text-align: center; padding: 2rem 0; margin-top: auto; color: #9ca3af; font-size: 0.9rem; line-height: 1.8; width: 100%;">
+            <a href="https://github.com/mumuhaha487/Turtle_Soup" target="_blank" style="color: inherit; text-decoration: none;">Turtle_Soup</a> 由 <a href="https://github.com/mumuhaha487" target="_blank" style="color: inherit; text-decoration: none;">mumuhaha</a> 构建
+            | <a href="https://beian.miit.gov.cn/" target="_blank" style="color: inherit; text-decoration: none;">赣ICP备2024038464号</a>
+            <br>
+            <span style="font-size: 0.8rem;">社区修改版 by <a href="https://github.com/kaimiituizi" target="_blank" style="color: inherit; text-decoration: none;">凯喵推子</a> | 全 AI 修改 · <a href="https://github.com/kaimiituizi/Turtle_Soup" target="_blank" style="color: inherit; text-decoration: none;">GitHub 仓库</a></span>
+        </div>
+    </div> <!-- /container -->
 
     <script src="{{ url_for('static', filename='main.js') }}"></script>
     <script>

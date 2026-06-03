@@ -303,4 +303,6 @@ A: 只支持JSON格式文件，文件大小不能超过20MB。
 
 **享受你的海龟汤推理游戏！** 🐢
 
-*Turtle_Soup 由 [mumuhaha](https://github.com/mumuhaha487) 构建* 
+*Turtle_Soup 由 [mumuhaha](https://github.com/mumuhaha487) 构建*
+
+> 社区修改版请查看 [README-修改版.md](./README-修改版.md)
